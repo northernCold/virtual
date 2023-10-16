@@ -1,5 +1,5 @@
 <script lang="jsx">
-import { defineComponent, ref, computed, unref } from "vue";
+import { defineComponent, ref, computed, unref, watch } from "vue";
 import { FlexRender } from "@tanstack/vue-table";
 import { array, bool, func, object, oneOfType, string } from "vue-types";
 import { isUndefined } from "lodash-es";
@@ -7,6 +7,7 @@ import useColumns from "./hooks/useColumns";
 import useVirtualizer from "./hooks/useVirtualizer";
 import useTable from "./hooks/useTable";
 import TableBodyCell from "./TableBodyCell";
+import useSelection from './hooks/useSelection';
 
 export default defineComponent({
   props: {
@@ -30,12 +31,19 @@ export default defineComponent({
         : props.tableLayout;
     });
     const tableContainerRef = ref();
+    const columnsRef = ref([]);
 
     const hasScollYbar = computed(() => !isUndefined(props.scroll?.y));
+    
+    const [transformSelectionColumns, enableRowSelectionRef, rowSelectionRef] = useSelection(props.rowSelection);
 
-    const columns = useColumns(props.columns);
+    columnsRef.value = useColumns(props.columns);
 
-    const table = useTable({ dataSource: props.dataSource, columns });
+    watch(() => props.dataSource, () => {
+      columnsRef.value = transformSelectionColumns(columnsRef.value);
+    }, { immediate: true })
+
+    const table = useTable({ dataSource: props.dataSource, columnsRef, rowSelectionRef, enableRowSelectionRef });
 
     const [virtualizer, visibleRowRef] = useVirtualizer({
       dataSource: props.dataSource,
@@ -218,5 +226,4 @@ table {
     }
   }
 }
-
 </style>
